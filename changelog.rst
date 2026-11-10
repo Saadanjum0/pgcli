@@ -12,6 +12,8 @@ Bug fixes:
 ----------
 * Display database errors from ``\ef`` and ``\ev`` without exiting the
   interactive session, allowing recovery from an aborted transaction.
+* Stop stripping ``--`` and ``/* */`` from inside the arguments of backslash
+  commands, which turned ``\i my--file.sql`` into ``\i my``.
 * Fix the development setup instructions to activate the ``.venv`` directory
   created by ``uv venv``.
 * Read ``alias_map_file`` as UTF-8 (with or without a BOM) instead of the
