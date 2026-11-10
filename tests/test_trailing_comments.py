@@ -45,3 +45,30 @@ class TestIsCompleteWithTrailingComments:
 
     def test_comment_with_special_chars(self):
         assert _is_complete("VACUUM ANALYZE; -- 81.0% towards emergency, 971 MB") is True
+
+
+class TestBackslashCommandComments:
+    """Comment markers inside a backslash command argument are not comments."""
+
+    @staticmethod
+    def _special_sql(statement):
+        from unittest.mock import MagicMock
+
+        from pgcli.pgexecute import PGExecute
+
+        seen = []
+        pgspecial = MagicMock()
+        pgspecial.execute.side_effect = lambda cur, sql: seen.append(sql) or [(None, None, None, "ok")]
+        executor = MagicMock(reset_expanded=None)
+        list(PGExecute.run(executor, statement, pgspecial))
+        return seen
+
+    def test_double_dash_in_file_name(self):
+        assert self._special_sql(r"\i my--file.sql") == [r"\i my--file.sql"]
+
+    def test_double_dash_in_path_with_semicolon(self):
+        assert self._special_sql(r"\cd /tmp/a--b;") == [r"\cd /tmp/a--b"]
+
+    def test_trailing_comments_are_still_stripped(self):
+        assert self._special_sql(r"\d foo -- note") == [r"\d foo"]
+        assert self._special_sql(r"\h /*comment*/") == [r"\h"]

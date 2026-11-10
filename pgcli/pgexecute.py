@@ -40,6 +40,18 @@ def remove_beginning_comments(command):
     return [cleaned_command, comments]
 
 
+def _strip_comments(sql):
+    sql = sql.lstrip()
+    if not sql.startswith("\\"):
+        return sqlparse.format(sql, strip_comments=True)
+    # Backslash commands take their arguments verbatim, so only strip comments
+    # set off by whitespace; "\i my--file.sql" must keep its file name.
+    tokens = list(sqlparse.parse(sql)[0].flatten())
+    return "".join(
+        tok.value for i, tok in enumerate(tokens) if not (tok.ttype in sqlparse.tokens.Comment and (i == 0 or tokens[i - 1].is_whitespace))
+    )
+
+
 def register_typecasters(connection):
     """Casts date and timestamp values to string, resolves issues with out-of-range
     dates (e.g. BC) which psycopg can't handle"""
@@ -370,7 +382,7 @@ class PGExecute:
             # Strip comments first so rstrip(";") works when there are
             # trailing comments after the semicolon, e.g.:
             #   vacuum freeze verbose t; -- 82% towards emergency
-            sql = sqlparse.format(sql, strip_comments=True).strip().rstrip(";")
+            sql = _strip_comments(sql).strip().rstrip(";")
             sql = sql.strip()
             if not sql:
                 continue
